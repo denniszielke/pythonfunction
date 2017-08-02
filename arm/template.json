@@ -1,0 +1,151 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deployment_name": {
+            "defaultValue": "dz1",
+            "type": "string",
+            "metadata": {
+                "description": "Short name of the deployment to ensure no name collisions"
+            }
+        },
+        "function_repo_url": {
+            "type": "string",
+            "defaultValue": "https://github.com/denniszielke/pythonfunction.git",
+            "metadata": {
+                "description": "The URL for the GitHub repository that contains the project to deploy."
+            }
+        }       
+    },
+    "variables": {
+        "storageAccounts_pyfunc_name": "[concat(parameters('deployment_name'), 'pyfunc')]",
+        "serverfarms_funcplan_name": "[concat(parameters('deployment_name'), 'funcplan')]",
+        "sites_pyfunc_name": "[concat(parameters('deployment_name'), 'pyfunc')]"
+    },
+    "resources": [
+        {
+            "comments": "Azure function storage account",
+            "type": "Microsoft.Storage/storageAccounts",
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "kind": "Storage",
+            "name": "[variables('storageAccounts_pyfunc_name')]",
+            "apiVersion": "2016-01-01",
+            "location": "[resourceGroup().location]",
+            "tags": {},
+            "scale": null,
+            "properties": {},
+            "dependsOn": []
+        },
+        {
+            "comments": "Python azure function plan",
+            "type": "Microsoft.Web/serverfarms",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y",
+                "capacity": 0
+            },
+            "kind": "functionapp",
+            "name": "[variables('serverfarms_funcplan_name')]",
+            "apiVersion": "2015-08-01",
+            "location": "[resourceGroup().location]",
+            "scale": null,
+            "properties": {
+                "name": "[variables('serverfarms_funcplan_name')]",
+                "numberOfWorkers": 0
+            },
+            "dependsOn": []
+        },
+        {
+            "comments": "Generalized from resource: .",
+            "type": "Microsoft.Web/sites",
+            "kind": "functionapp",
+            "name": "[variables('sites_pyfunc_name')]",
+            "apiVersion": "2015-08-01",
+            "location": "[resourceGroup().location]",
+            "scale": null,
+            "properties": {
+                "name": "[variables('sites_pyfunc_name')]",
+                "hostNames": [
+                    "[concat(variables('sites_pyfunc_name'),'.azurewebsites.net')]"
+                ],
+                "enabledHostNames": [
+                    "[concat(variables('sites_pyfunc_name'),'.azurewebsites.net')]",
+                    "[concat(variables('sites_pyfunc_name'),'.scm.azurewebsites.net')]"
+                ],
+                "hostNameSslStates": [
+                    {
+                        "name": "[concat(variables('sites_pyfunc_name'),'.azurewebsites.net')]",
+                        "sslState": 0,
+                        "thumbprint": null,
+                        "ipBasedSslState": 0
+                    },
+                    {
+                        "name": "[concat(variables('sites_pyfunc_name'),'.scm.azurewebsites.net')]",
+                        "sslState": 0,
+                        "thumbprint": null,
+                        "ipBasedSslState": 0
+                    }
+                ],
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_funcplan_name'))]"
+            },
+            "resources": [
+                {
+                    "apiVersion": "2014-04-01",
+                    "type": "config",
+                    "name": "web",
+                    "dependsOn": [
+                        "[resourceId('microsoft.web/sites/', variables('sites_pyfunc_name'))]",
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccounts_pyfunc_name'))]"
+                    ],
+                    "properties": {
+                        "appSettings": [
+                            {
+                                "Value": "latest",
+                                "Name": "FUNCTIONS_EXTENSION_VERSION"
+                            },
+                            {
+                                "Value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccounts_pyfunc_name'), ';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccounts_pyfunc_name')), '2015-05-01-preview').key1,';')]",
+                                "Name": "AzureWebJobsStorage"
+                            },
+                            {
+                                "Value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccounts_pyfunc_name'), ';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccounts_pyfunc_name')), '2015-05-01-preview').key1,';')]",
+                                "Name": "AzureWebJobsDashboard"
+                            },
+                            {
+                                "Value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccounts_pyfunc_name'), ';AccountKey=',listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccounts_pyfunc_name')), '2015-05-01-preview').key1,';')]",
+                                "Name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING"
+                            },
+                            {
+                                "Value": "[toLower(variables('sites_pyfunc_name'))]",
+                                "Name": "WEBSITE_CONTENTSHARE"
+                            }
+                        ]
+                    }
+                },
+                {
+                "apiVersion": "2014-04-01",
+                "name": "web",
+                 "type": "sourcecontrols",
+                 "dependsOn": [
+                        "[resourceId('Microsoft.Web/Sites', variables('sites_pyfunc_name'))]",
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccounts_pyfunc_name'))]",
+                        "[concat('Microsoft.Web/Sites/', variables('sites_pyfunc_name'), '/config/web')]"
+                ],
+                "properties": {
+                    "RepoUrl": "[parameters('function_repo_url')]",
+                    "branch": "master",
+                    "IsManualIntegration": true
+                    }
+                }
+            ],
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('serverfarms_funcplan_name'))]"
+            ]
+        }     
+    ]
+}
