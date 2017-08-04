@@ -1,0 +1,30 @@
+{
+  "bindings": [
+    {
+      "authLevel": "function",
+      "type": "httpTrigger",
+      "direction": "in",
+      "name": "req",
+      "methods": [
+        "post"
+      ]
+    },
+    {
+      "type": "eventHub",
+      "name": "outdocevent",
+      "path": "outeventhub",
+      "connection": "testwsvddq5juvcwaowns_RootManageSharedAccessKey_EVENTHUB",
+      "direction": "out"
+    },
+    {
+      "type": "documentDB",
+      "name": "outdocdb",
+      "databaseName": "preprocessedDocs",
+      "collectionName": "preprocessing",
+      "createIfNotExists": true,
+      "connection": "carprocessigoutput_DOCUMENTDB",
+      "direction": "out"
+    }
+  ],
+  "disabled": false
+}
